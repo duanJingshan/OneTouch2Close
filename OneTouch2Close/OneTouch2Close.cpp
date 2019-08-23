@@ -248,7 +248,7 @@ int EntityFsm(int iE, string& strpLine)
 		iLayerNumber = gaLayerNumber[giDevNumber - 1];//当前设备，当前的层次编号
 		iEntityNumber = gaEntityNumber[giDevNumber - 1][iLayerNumber - 1];//当前设备，当前层次，当前实体序号
 		//把当前设备，当前层次，当前实体编号记录下来，
-		gsEntityCmdAddr[giDevNumber - 1][iLayerNumber - 1][iEntityNumber].sin_addr = addr.sin_addr;
+		gsEntityCmdAddr[giDevNumber - 1][iLayerNumber - 1][iEntityNumber-1].sin_addr = addr.sin_addr;
 		break;
 	case CMD_PORT_EVENT:
 		//取得端口号
@@ -257,7 +257,7 @@ int EntityFsm(int iE, string& strpLine)
 		iLayerNumber = gaLayerNumber[giDevNumber - 1];//当前设备，当前的层次编号
 		iEntityNumber = gaEntityNumber[giDevNumber - 1][iLayerNumber - 1];//当前设备，当前层次，当前实体序号
 		//把当前设备，当前层次，当前实体编号记录下来，
-		gsEntityCmdAddr[giDevNumber - 1][iLayerNumber - 1][iEntityNumber].sin_port = addr.sin_port;
+		gsEntityCmdAddr[giDevNumber - 1][iLayerNumber - 1][iEntityNumber-1].sin_port = addr.sin_port;
 		break;
 	case UNKNOWN_EVENT:
 		//保持状态不变
