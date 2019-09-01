@@ -39,21 +39,25 @@ constexpr auto UNKNOWN_EVENT = 6;
 int giDevNumber;
 int gaDevID[MAX_NUMBER];  //a[i],记录dev i 的ID号
 int gaLayerNumber[MAX_NUMBER]; //a[i],表示device i有多少层
-char* gcpLayerName[MAX_NUMBER][MAX_NUMBER]; //a[i][j],记录device i,第j层的名字
+string gcpLayerName[MAX_NUMBER][MAX_NUMBER]; //a[i][j],记录device i,第j层的名字
 int gaEntityNumber[MAX_NUMBER][MAX_NUMBER]; //a[i][j]，表示device i,第j层有多少个实体
 int gaEntityID[MAX_NUMBER][MAX_NUMBER][MAX_NUMBER]; //a[i][j][k],表示device i 的第i层，第k个实体的ID号
 sockaddr_in gsEntityCmdAddr[MAX_NUMBER][MAX_NUMBER][MAX_NUMBER]; //a[i][j][k],表示device i 的第i层，第k个实体的地址
-void myStrcpy(char* dst, string& src) //只保留ASCII码大于32的字符，32为空格，以下的都是控制字符
+void myStrcpy(string& dst, string& src) //只保留ASCII码大于32的字符，32为空格，以下的都是控制字符
 {
-	size_t i, j;
-	j = 0;
-	for (i = 0; i < strlen(src.c_str()); i++) {
-		if (src[i] > 32 || src[i] < 0) {
-			dst[j] = src.c_str()[i];
-			j++;
+	size_t i;
+	const char* cpSrc;
+	dst.clear();
+
+	if (src.empty()) {
+		return dst.clear();
+	}
+	cpSrc = src.c_str();
+	for (i = 0; i < strlen(cpSrc); i++) {
+		if (cpSrc[i] > 32 || cpSrc[i] < 0) {
+			dst.append(1, cpSrc[i]);
 		}
 	}
-	dst[j] = 0;
 }
 
 int getEvent(string& strpLine)
@@ -121,7 +125,6 @@ int idle4DevFsm(int iE, string& strpLine)
 int idle4LayerFsm(int iE, string& strpLine)
 {
 	string strTmp;
-	char* cpTmp;
 	int iLayerNumber;
 	int iS = IDLE4LAYER_STATE;
 
@@ -132,16 +135,12 @@ int idle4LayerFsm(int iE, string& strpLine)
 		break;
 	case LAYER_EVENT:
 		//截断取得名字
+		//截断取得名字
 		strTmp = strpLine.substr(strpLine.find("=") + 1, strpLine.length() - strpLine.find("="));
 		//整理内容，只保留大于32的字符
-		cpTmp = (char*)malloc(strlen(strTmp.c_str()) + 10);
-		if (cpTmp == NULL) {
-			return iS;
-		}
-		myStrcpy(cpTmp, strTmp);
 		iLayerNumber = gaLayerNumber[giDevNumber - 1];//当前设备，当前的层次序号
 		//将层次名称记录下来
-		gcpLayerName[giDevNumber - 1][iLayerNumber] = cpTmp;
+		myStrcpy(gcpLayerName[giDevNumber - 1][iLayerNumber], strTmp);
 
 		gaLayerNumber[giDevNumber - 1]++;
 
@@ -210,7 +209,7 @@ int EntityFsm(int iE, string& strpLine)
 	string strTmp;
 	sockaddr_in addr;
 	int x;
-	char* cpTmp;
+	string strTmp2;
 
 	int iS = ENTITY_STATE;
 
@@ -233,17 +232,12 @@ int EntityFsm(int iE, string& strpLine)
 		//取得IP地址
 		strTmp = strpLine.substr(strpLine.find("=") + 1, strpLine.length() - strpLine.find("="));
 		//整理内容，只保留大于32的字符
-		cpTmp = (char*)malloc(strlen(strTmp.c_str()) + 10);
-		if (cpTmp == NULL) {
-			return iS;
-		}
-		myStrcpy(cpTmp, strTmp);
+		myStrcpy(strTmp2, strTmp);
 
-		x = inet_pton(AF_INET, cpTmp, &(addr.sin_addr));
+		x = inet_pton(AF_INET, strTmp2.c_str(), &(addr.sin_addr));
 		if (x <= 0) {
 			addr.sin_addr.S_un.S_addr = htonl(INADDR_LOOPBACK);
 		}
-		free(cpTmp);
 		//addr.sin_addr.S_un.S_addr = inet_addr(strTmp.c_str());//
 		iLayerNumber = gaLayerNumber[giDevNumber - 1];//当前设备，当前的层次编号
 		iEntityNumber = gaEntityNumber[giDevNumber - 1][iLayerNumber - 1];//当前设备，当前层次，当前实体序号
@@ -297,7 +291,7 @@ int main()
 		gaLayerNumber[i] = 0; //a[i],表示device i有多少层
 		gaDevID[i] = 0;
 		for (j = 0; j < MAX_NUMBER; j++) {
-			gcpLayerName[i][j] = NULL; //a[i][j],是device i,第j层的名字
+			gcpLayerName[i][j].clear(); //a[i][j],是device i,第j层的名字
 			gaEntityNumber[i][j] = 0;//a[i][j]，表示device i,第j层有多少个实体
 			for (k = 0; k < MAX_NUMBER; k++) {
 				gaEntityID[i][j][k] = 0;
@@ -346,7 +340,7 @@ int main()
 	cout << "读出网元 " << giDevNumber << " 个" << endl;
 	for (i = 0; i < giDevNumber; i++) {
 		for (j = 0; j < gaLayerNumber[i]; j++) {
-			csCmd = gcpLayerName[i][j];
+			csCmd = gcpLayerName[i][j].c_str();
 			for (k = 0; k < gaEntityNumber[i][j]; k++) {
 				if (gsEntityCmdAddr[i][j][k].sin_port == 0) {
 					continue;
@@ -361,15 +355,7 @@ int main()
 			}
 		}
 	}
-	for (i = 0; i < MAX_NUMBER; i++) {
-		gaLayerNumber[i] = 0; //a[i],表示device i有多少层
-		gaDevID[i] = 0;
-		for (j = 0; j < MAX_NUMBER; j++) {
-			if (gcpLayerName[i][j] != NULL) { //a[i][j],是device i,第j层的名字
-				free(gcpLayerName[i][j]);
-			}
-		}
-	}
+
 	closesocket(sock);
 	WSACleanup();
 }
